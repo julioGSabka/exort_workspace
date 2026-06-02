@@ -1,0 +1,13 @@
+repositories:
+  
+  exort_description:
+    type: git
+    url: https://github.com/julioGSabka/exort_description.git
+    version: main
+  exort_simulation:
+    type: git
+    url: https://github.com/julioGSabka/exort_simulation.git
+    version: main
+    
+    
+    
