@@ -4,6 +4,7 @@
 > Última atualização: 2026-11-04. Atualize ao mudar arquitetura, tópicos ou objetivos.
 > **Fonte de verdade do objetivo:** o projeto FAPESP (reconsideração, versão #2 de 04/11/2026),
 > resumido na §1–2. README do workspace foi removido (citava RTOS); READMEs dos pacotes atualizados em 04/11/2026.
+> Pendências da revisão: **TODO.md**.
 
 ## 1. O projeto (versão atual, submetida à FAPESP)
 **Título:** *Efeitos de Atrasos Temporais na Estabilidade do Controle de Impedância: uma abordagem
@@ -84,92 +85,89 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
 
 ## 3. Stack
 - ROS 2 **Humble**, Gazebo **Ignition/Fortress** (`ros_gz_sim`, plugins `ignition-gazebo-*`)
-- `ros2_control` + `gz_ros2_control` (hardware `GazeboSimSystem`), `controller_manager` a 1000 Hz
-- Nós em **Python (rclpy)**; PlotJuggler para telemetria; `vcstool` para multi‑repo; build com `colcon`
+- `ros2_control` 2.54 + `gz_ros2_control` 0.7 (hardware `GazeboSimSystem`), `controller_manager` a 1000 Hz
+- Controlador em **C++** (plugin `controller_interface`, `generate_parameter_library`, `realtime_tools`);
+  testes com gtest/gmock; PlotJuggler para telemetria; `vcstool` para multi‑repo; build com `colcon`
 
 ## 4. Estrutura do código
 ```
-~/ic_fapesp/                     repo "exort_workspace" (github julioGSabka) — .repos + este arquivo (README removido)
+~/ic_fapesp/                     repo "exort_workspace" (github julioGSabka) — .repos + CLAUDE.md + TODO.md
 ├── exort_project.repos          vcs import src < exort_project.repos
+├── TODO.md                      pendências da revisão de 04/11/2026 (analisar uma a uma)
 └── src/                         (ignorado pelo git do workspace; cada pacote é um repo próprio)
     ├── exort_description/       repo julioGSabka/exort_description
-    │   ├── urdf/motorAK.xacro.urdf    world→estator(fixo)→rotor (motor_joint) + carga
+    │   ├── urdf/motorAK.xacro.urdf    world→estator(fixo)→rotor (motor_joint) + link
     │   ├── urdf/motorAK.gazebo.xacro  bloco <ros2_control> + plugin gz_ros2_control
-    │   ├── urdf/peso.xacro.urdf       macro human_arm_weight (barra 2 kg, 0,3 m) presa ao rotor
+    │   ├── urdf/peso.xacro.urdf       macro human_arm_weight (barra 2 kg, 0,3 m) — é o MEMBRO ROBÓTICO
     │   ├── assets/ak10_9v2_0.stl      malha do motor (a80_6gz.* não é usada)
-    │   ├── launch/exort_description.launch.py  robot_state_publisher + rviz2
+    │   ├── launch/exort_description.launch.py  robot_state_publisher + rviz2 (arg `rviz`)
     │   └── rviz/view_model.rviz
+    ├── exort_control/           repo local (git init); GitHub julioGSabka/exort_control a criar
+    │   ├── include/exort_control/mit_impedance_law.hpp         lei pura (sem ROS), testável
+    │   ├── include/exort_control/mit_impedance_controller.hpp  plugin ros2_control
+    │   ├── src/mit_impedance_controller.cpp
+    │   ├── src/mit_impedance_controller_parameters.yaml        parâmetros (generate_parameter_library)
+    │   ├── exort_control.xml                                   descrição pluginlib
+    │   └── test/  test_mit_impedance_law | test_mit_impedance_controller | test_load_...
     └── exort_simulation/        repo julioGSabka/exort_simulation
-        ├── launch/start_simulation.launch.py   Gazebo + spawn + bridge + joint_state_broadcaster
-        ├── launch/sim_and_control.launch.py    launch principal (inclui o anterior + controle)
-        ├── config/controller_config.yaml       JSB + effort_controller (JointGroupEffortController)
+        ├── launch/start_simulation.launch.py   Gazebo (arg `gui`) + spawn + bridge + JSB
+        ├── launch/sim_and_control.launch.py    inclui o anterior + spawner do controlador + PlotJuggler
+        ├── config/controller_config.yaml       JSB + mit_impedance_controller (kv, bv, limites)
         ├── config/plotJug_layout.xml           layout PlotJuggler (pos/vel/effort da junta)
-        ├── worlds/empty.sdf                    passo de física 1 ms, RTF 1
-        └── src/ak10_controller.py | mit_command_publisher.py
+        └── worlds/empty.sdf                    passo de física 1 ms, RTF 1
 ```
-As pastas `include/` estão vazias (ainda não há C++).
+Não há mais nós Python (ak10_controller.py e mit_command_publisher.py foram removidos em 04/11/2026).
 
 ## 5. Modelo físico (exort_description)
 - `motor_joint`: `continuous`, eixo X, limite de 48 Nm e 33,5 rad/s, damping 0,05, friction 0,27.
 - Massas (datasheet AK10-9, 0,96 kg): estator 0,768 kg (cilindro oco, raios 49/41 mm), rotor 0,192 kg.
-- Carga: `arm_link` de 2 kg, caixa de 0,02×0,3×0,03 m, fixa ao rotor com offset de 0,1 m. Gera torque
-  gravitacional na junta.
-- Spawn em z = 0,1 com pitch −1,57: o eixo fica horizontal e o braço pendula sob a gravidade.
+- Link: `arm_link` de 2 kg, caixa de 0,02×0,3×0,03 m, centro a 0,1 m do eixo. **Nesta fase é o membro
+  robótico, não o humano** (macro ainda se chama `human_arm_weight`; ver TODO.md).
+  Inércia total em torno do eixo ≈ 0,0353 kg·m² (braço 0,0152 + m·d² 0,02 + rotor 0,00016).
+- Spawn em z = 0,1 com pitch −1,57 (rotação em Y): o eixo X da junta fica **vertical** e o link gira num
+  plano horizontal, **sem torque gravitacional**. Evidência: com torque zero por ~30 s a junta ficou em
+  ~1e-12 rad (teste de 04/11/2026). Decidir se é o desejado (TODO.md).
 - ros2_control: **command interface = effort** (emula o modo MIT); estados: position, velocity, effort.
+- Dinâmica com o controlador: J·θ̈ + (Bv + 0,05)·θ̇ + Kv·(θ − θ0) + atrito = 0 →
+  ωn = √(Kv/J), ζ = (Bv + 0,05)/(2√(Kv·J)). Ex.: Kv = 5, Bv = 0,1 → ωn ≈ 12 rad/s, ζ ≈ 0,18.
 
-## 6. Código de controle atual (exort_simulation)
-### `ak10_controller.py` (v2, ainda sem commit)
-Emula o **modo MIT** do driver AK: `τ = Kp(p_des−p) + Kd(v_des−v) + T_ff`, a 1 kHz nominal.
-- `use_impedance_law=true`: Kp = Kd = 0 e **T_ff = Kv·ΔP + Bv·ΔV**, com ΔP = p_rest − p e ΔV = −v.
-  Equivale à eq. (1) com θd = p_rest constante e θ̇d = 0. Kv e Bv ≥ 0, ajustáveis em runtime
-  (`ros2 param set /ak10_controller kv 20.0`).
-- `use_impedance_law=false`: quadro MIT cru vindo de `~/mit_command` [pos_des, vel_des, kp, kd, t_ff].
-- `hold_initial_position`: torque 0 até `capture_delay` (tempo sim.); depois captura `p_rest`.
-  Serviço `~/capture_rest` (Trigger).
-- Segurança: torque 0 se `/joint_states` tiver mais de 0,1 s; corte de sobrevelocidade; clamp de ±48 Nm.
-- Entrada `~/external_torque` (Float64), somada **depois** do clamp — sobra do teste de perturbação
-  (gerador removido); inofensiva (timeout → 0), pode ser reaproveitada ou removida.
-- `~/debug` = [ΔP, ΔV, T_ff, motor_effort, tau_ext, total_effort, saturated, rest_position].
-- Publica em `/effort_controller/commands`.
-
-### `mit_command_publisher.py`
-Teste do MIT cru: alterna `pos_min`/`pos_max` a cada `intervalo` s
-(parâmetros `intervalo, kp, kd, vel_alvo, tff, pos_min, pos_max`).
+## 6. Controlador atual (exort_control/MitImpedanceController)
+**Fase atual (decidida com o orientador):** MIT com **kp = kd = 0**, controlando só o torque com
+`t_ff = Kv·(p_ref − p) + Bv·(0 − v)`; `p_ref` = posição no **início da simulação** (capturada no 1º
+`update()` após a ativação). Objetivo imediato: **definir a faixa de Kv e Bv em que controlador e modelo
+respondem adequadamente**.
+- Roda no laço do `controller_manager` (Ts = 1 ms exato, confirmado: `time_step = 0.001`). Sem tópicos
+  entre planta e lei de controle → Ds = 0 é atraso zero de verdade.
+- Comando: `motor_joint/effort`; estados: `position`, `velocity` (procurados nessa ordem).
+- Parâmetros (`generate_parameter_library`, validados): `joint` (read-only), `kv` ≥ 0, `bv` ≥ 0,
+  `max_effort` > 0 (48), `max_velocity` > 0 (33,5). Kv/Bv/limites mudam em execução:
+  `ros2 param set /mit_impedance_controller kv 20.0` (aplicado no próximo update, sem alocação).
+- Proteções: sobrevelocidade (não empurra no sentido do movimento acima de max_velocity), saturação
+  ±max_effort; estado não finito → torque 0; ativação/desativação → torque 0.
+- `~/state` (`control_msgs/JointControllerState`, 1 kHz, stamp em sim-time), mapeamento provisório:
+  set_point = p_ref, process_value = p, process_value_dot = v, error = p_ref − p, time_step = Ts,
+  command = τ, p = Kv, d = Bv, i = t_ff, i_clamp = τ MIT antes dos limites, antiwindup = saturou.
+- Testes (19, todos passando): lei pura, controlador com interfaces locais, carga via pluginlib com
+  `mock_components/GenericSystem`.
 
 ### Sequência de launch (`sim_and_control.launch.py`)
-1. Seta `IGN_GAZEBO_RESOURCE_PATH`, abre o Gazebo (`-r empty.sdf`), o robot_state_publisher e o RViz.
-2. t ≈ 15 s (relógio de parede): spawn de `motor_AK10`; ao terminar, sobem a bridge (`/clock`, `/tf`) e o JSB.
-3. t ≈ 10 s (relógio de parede): spawner do `effort_controller` (espera até 30 s) e PlotJuggler.
-4. Imediato: `ak10_controller`. Args: `kv`, `bv`, `capture_delay`, `controller`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
+1. `IGN_GAZEBO_RESOURCE_PATH`, Gazebo (`-r`, ou `-r -s` com `gui:=false`), robot_state_publisher, RViz opcional.
+2. t ≈ 15 s (parede): spawn de `motor_AK10` → bridge (`/clock`, `/tf`) e spawner do JSB.
+3. t ≈ 10 s (parede): spawner do `mit_impedance_controller` (espera até 30 s pelo CM) com YAML temporário
+   de `kv`/`bv` via `--param-file`; PlotJuggler opcional.
+Args: `kv`, `bv`, `gui`, `rviz`, `plotjuggler`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
 
-## 7. Lacunas entre o código e a metodologia (o que falta desenvolver)
-1. **Referência de movimento θd(t), θ̇d(t):** hoje a referência é só p_rest constante. É preciso
-   uma trajetória padronizada e parametrizável (degrau, senoide, chirp...) dentro do controlador
-   ou num nó gerador.
-2. **Malha interna de torque:** hoje τd vai direto para a interface effort, sem realimentação de τi.
-   Falta definir como emular a malha de torque do driver e **como medir τi no Gazebo**. Atenção:
-   o estado `effort` do `GazeboSimSystem` tende a refletir o torque comandado, não o de interação.
-   Opções: sensor force/torque na junta, junta extra entre rotor e carga, ou cálculo pela dinâmica.
-3. **Bloco de atraso Ds:** buffer circular sobre [θ, θ̇, τi] com N_D = Ds/Ts e interpolação.
-   Deve ser parâmetro do controlador (Ds = 0 é a referência).
-4. **Ts constante:** no bag antigo (já apagado) o laço rodou a ~314 Hz efetivos, contra 1 kHz nominais (timer Python
-   com sim-time). Com isso o atraso em amostras fica impreciso. Avaliar: atualizar o controle no callback
-   do `/joint_states`, usar um controlador `ros2_control` em C++ (controller plugin), ou medir Ts real
-   e indexar o buffer por tempo.
-5. **Registro sincronizado** de θ, θ̇, τi, τd (e eθ, eθ̇, eτ, Ds, Kv, Bv) a cada passo do controle, num
-   tópico único ou em rosbag/CSV por ensaio.
-6. **Automação dos ensaios:** script que varre a grade E = (Kv, Bv, Ds), reinicia em condições
-   iniciais padronizadas (reset do Gazebo), descarta a estabilização e salva cada ensaio.
-7. **Pós-processamento** (Python, numpy/pandas): RMSE, erro de torque, ajuste de Kef/Bef, εK e εB,
-   classificador de estabilidade C_est, Ds,lim e o mapa (Kv, Bv, Ds).
-8. Preencher as descrições TODO dos `package.xml`.
-9. (Feito em 04/11/2026: removidos `torque_disturbance.py`, rosbag antigo e args de perturbação; READMEs atualizados.)
+## 7. Lacunas entre o código e a metodologia
+Lista completa e priorizada em **TODO.md**. Principais: excitação/perturbação para observar a resposta
+(hoje, sem gravidade e sem perturbação, a junta fica parada na referência); τi medido; bloco de atraso Ds;
+malha interna de torque; referência θd(t); registro por ensaio; automação da grade; pós-processamento.
 
 ## 8. Comandos úteis
 ```bash
 cd ~/ic_fapesp && colcon build --symlink-install && source install/setup.bash
+colcon test --packages-select exort_control && colcon test-result --verbose
 ros2 launch exort_simulation sim_and_control.launch.py kv:=20.0 bv:=0.5
-ros2 service call /ak10_controller/capture_rest std_srvs/srv/Trigger
+ros2 launch exort_simulation sim_and_control.launch.py gui:=false rviz:=false plotjuggler:=false
+ros2 control list_controllers
+ros2 topic echo /mit_impedance_controller/state
 ```
-Estado git (04/11/2026): alterações sem commit em `exort_simulation` (launch, package.xml,
-ak10_controller v2, README), `exort_description` (readme) e no workspace (README removido, CLAUDE.md novo).

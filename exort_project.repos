@@ -8,6 +8,7 @@ repositories:
     type: git
     url: https://github.com/julioGSabka/exort_simulation.git
     version: main
-    
-    
-    
+  exort_control:
+    type: git
+    url: https://github.com/julioGSabka/exort_control.git
+    version: main
