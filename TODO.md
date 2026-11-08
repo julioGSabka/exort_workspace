@@ -6,8 +6,8 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 ## Metodologia e modelo
 - [ ] **A — Tratar a inércia e o atrito na medição de Kef/Bef** (eq. 8). Ensaio de 08/11/2026 (Kv = 5, Bv = 0,1,
   A = 1, f = 1): ajuste direto recuperou J = 0,0354, b = 0,052, Fc = 0,267; Re(Z) = 3,23 (esperado 3,61) e
-  Im(Z)/ω = 0,357 (0,150 sem atrito). Hipótese para Re(Z): atrito distorce θ; testar sem atrito.
-- [ ] **B — Perda de cerca de 0,8% das amostras no rosbag** (172 de 21.776): checar `--qos-profile-overrides`/cache.
+  Im(Z)/ω = 0,357 (0,150 sem atrito). Com A = 2, Re(Z) = 3,51 (esperado 3,61): a diferença cai com a amplitude, o que reforça a hipótese do atrito.
+- [ ] **B — Perda de amostras no rosbag:** 0,8% sem janelas (172 de 21.776), 2 a 3% com janelas abertas: checar `--qos-profile-overrides`/cache.
 - [ ] **B — Massa e dimensões do `robot_link`:** revisar os valores (hoje 2 kg, 0,02×0,3×0,03 m, centro a 0,1 m do eixo).
 - [ ] **A — Medir τi (torque de interação) na simulação.** Verificar o que o estado `effort` do
   `gz_ros2_control` 0.7 retorna (provável: torque comandado). Opções: sensor force/torque do Gazebo em
@@ -24,6 +24,7 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
   Referência com o modelo atual: J ≈ 0,035 kg·m²; Kv = 5 → ωn ≈ 12 rad/s, ζ ≈ 0,18 (Bv = 0,1).
 
 ## Código e estrutura
+- [ ] **C — PlotJuggler pede dois cliques ao abrir** (Yes e OK): não há opção de linha de comando para pular.
 - [ ] **B — Perturbação externa pelo Gazebo** (ApplyJointForce/wrench), se for necessária, em vez de somar no comando.
 - [ ] **B — Dependência circular** `exort_description` → `$(find exort_simulation)` no `motorAK.gazebo.xacro`:
   passar o YAML dos controladores como argumento do xacro.

@@ -117,7 +117,7 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
         ├── launch/start_simulation.launch.py   Gazebo (arg `gui`) + spawn + bridge + JSB
         ├── launch/sim_and_control.launch.py    inclui o anterior + spawner do controlador + PlotJuggler
         ├── config/controller_config.yaml       JSB + mit_impedance_controller (kv, bv, limites)
-        ├── config/plotJug_layout.xml           layout PlotJuggler (pos/vel/effort da junta)
+        ├── config/plotJug_layout.xml           PlotJuggler: posição, velocidade e torques de ~/state
         └── worlds/empty.sdf                    passo de física 1 ms, RTF 1
 ```
 Não há mais nós Python (ak10_controller.py e mit_command_publisher.py foram removidos em 04/11/2026).
@@ -144,7 +144,8 @@ respondem adequadamente**.
   entre planta e lei de controle → Ds = 0 é atraso zero de verdade.
 - **Excitação (decidida em 08/11/2026):** torque senoidal imposto `τ_ext = rampa·A·sin(φ)`, somado depois da
   saturação e invisível à lei de controle; parâmetros `excitation_{amplitude,frequency,start_delay,ramp_time}`.
-  Agente acoplado fica para depois; atrito segue em aberto.
+  Agente acoplado fica para depois; atrito segue em aberto. Amplitude de 0 para > 0 recomeça a sequência
+  (é assim que `run_excitation_test --attach` dispara o ensaio na simulação aberta).
 - Comando: `motor_joint/effort`; estados: `position`, `velocity` (procurados nessa ordem).
 - Parâmetros (`generate_parameter_library`, validados): `joint` (read-only), `kv` ≥ 0, `bv` ≥ 0,
   `max_effort` > 0 (48), `max_velocity` > 0 (33,5). Kv/Bv/limites mudam em execução:
@@ -154,14 +155,14 @@ respondem adequadamente**.
 - `~/state` (`exort_msgs/ImpedanceState`, 1 kHz, `header.stamp` em sim-time): time_step, position_reference,
   position, velocity, position_error, velocity_error, kv, bv, feedforward_torque, raw_torque,
   commanded_torque, external_torque, total_torque, saturated, overspeed.
-- Testes (29 em exort_control, 6 em exort_experiments): lei pura, controlador com interfaces locais e mensagem publicada, carga via pluginlib com
+- Testes (30 em exort_control, 6 em exort_experiments): lei pura, controlador com interfaces locais e mensagem publicada, carga via pluginlib com
   `mock_components/GenericSystem`.
 
 ### Sequência de launch (`sim_and_control.launch.py`)
 1. `IGN_GAZEBO_RESOURCE_PATH`, Gazebo (`-r`, ou `-r -s` com `gui:=false`), robot_state_publisher, RViz opcional.
 2. t ≈ 15 s (parede): spawn de `motor_AK10` → bridge (`/clock`, `/tf`) e spawner do JSB.
 3. t ≈ 10 s (parede): spawner do `mit_impedance_controller` (espera até 30 s pelo CM) com YAML temporário
-   de `kv`/`bv` via `--param-file`; PlotJuggler opcional.
+   via `--param-file`; quando o spawner termina, abre o PlotJuggler (opcional).
 Args: `kv`, `bv`, `amplitude`, `frequency`, `start_delay`, `ramp_time`, `gui`, `rviz`, `plotjuggler`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
 
 ## 7. Lacunas entre o código e a metodologia
@@ -175,6 +176,7 @@ colcon test --packages-select exort_control && colcon test-result --verbose
 ros2 launch exort_simulation sim_and_control.launch.py kv:=20.0 bv:=0.5
 ros2 launch exort_simulation sim_and_control.launch.py gui:=false rviz:=false plotjuggler:=false
 ros2 run exort_experiments run_excitation_test --kv 5 --bv 0.1 --amplitude 1 --frequency 1 --duration 20
+ros2 run exort_experiments run_excitation_test --attach --amplitude 2  # usa a simulação já aberta, com janelas
 ros2 run exort_experiments plot_excitation_test results/<pasta_do_ensaio>
 ros2 control list_controllers
 ros2 topic echo /mit_impedance_controller/state
