@@ -97,10 +97,10 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
 ├── TODO.md                      pendências da revisão de 04/11/2026 (analisar uma a uma)
 └── src/                         (ignorado pelo git do workspace; cada pacote é um repo próprio)
     ├── exort_description/       repo julioGSabka/exort_description
-    │   ├── urdf/motorAK.xacro.urdf    world→estator(fixo)→rotor (motor_joint) + link
+    │   ├── urdf/motorAK.urdf.xacro    world→estator(fixo)→rotor (motor_joint) + link
     │   ├── urdf/motorAK.gazebo.xacro  bloco <ros2_control> + plugin gz_ros2_control
-    │   ├── urdf/robot_link.xacro.urdf macro robot_link (barra 2 kg, 0,3 m) — é o MEMBRO ROBÓTICO
-    │   ├── assets/ak10_9v2_0.stl      malha do motor (a80_6gz.* não é usada)
+    │   ├── urdf/robot_link.urdf.xacro macro robot_link (barra 2 kg, 0,3 m) — é o MEMBRO ROBÓTICO
+    │   ├── assets/ak10_9v2_0.stl      malha do motor
     │   ├── launch/exort_description.launch.py  robot_state_publisher + rviz2 (arg `rviz`)
     │   └── rviz/view_model.rviz
     ├── exort_msgs/              repo julioGSabka/exort_msgs — msg/ImpedanceState.msg
@@ -159,10 +159,10 @@ respondem adequadamente**.
   `mock_components/GenericSystem`.
 
 ### Sequência de launch (`sim_and_control.launch.py`)
-1. `IGN_GAZEBO_RESOURCE_PATH`, Gazebo (`-r`, ou `-r -s` com `gui:=false`), robot_state_publisher, RViz opcional.
-2. t ≈ 15 s (parede): spawn de `motor_AK10` → bridge (`/clock`, `/tf`) e spawner do JSB.
-3. t ≈ 10 s (parede): spawner do `mit_impedance_controller` (espera até 30 s pelo CM) com YAML temporário
-   via `--param-file`; quando o spawner termina, abre o PlotJuggler (opcional).
+Encadeada por eventos (cerca de 11 s até o controlador ativo, sem janelas); uma etapa que falha encerra o launch.
+1. `IGN_GAZEBO_RESOURCE_PATH` (acrescentado), Gazebo (`-r`, ou `-r -s` com `gui:=false`), robot_state_publisher, RViz opcional.
+2. Espera o serviço `/world/<mundo>/create` (até 120 s) → spawn de `motor_AK10` → bridge (`/clock`, `/tf`) e spawner do JSB.
+3. JSB ativo → spawner do `mit_impedance_controller` com YAML temporário via `--param-file` → PlotJuggler (opcional).
 Args: `kv`, `bv`, `amplitude`, `frequency`, `start_delay`, `ramp_time`, `gui`, `rviz`, `plotjuggler`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
 
 ## 7. Lacunas entre o código e a metodologia

@@ -28,15 +28,8 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 - [ ] **B — Perturbação externa pelo Gazebo** (ApplyJointForce/wrench), se for necessária, em vez de somar no comando.
 - [ ] **B — Dependência circular** `exort_description` → `$(find exort_simulation)` no `motorAK.gazebo.xacro`:
   passar o YAML dos controladores como argumento do xacro.
-- [ ] **B — Linters do `ament_lint` falhando** (flake8 nos launch files dos dois pacotes, pep257).
 - [ ] **B — `exort_experiments`:** falta varrer a grade (Kv, Bv, Ds) e calcular RMSE, εK/εB, C_est, Ds,lim.
   O ensaio individual e o gráfico já existem.
-- [ ] **B — Launch encadeado por eventos** (spawn → JSB → controlador → ensaio) em vez de `TimerAction`
-  com tempos fixos (hoje o spawner do controlador sobe aos 10 s, antes do robô, que sobe aos 15 s).
-- [ ] **C — `SetEnvironmentVariable` sobrescreve** `IGN_GAZEBO_RESOURCE_PATH` → usar `AppendEnvironmentVariable`.
-- [ ] **C — URDF:** colisão do estator é cilindro em Z (motor está em X); literal `-0.0102` em vez de
-  `rotor_altura`; `Gazebo/Grey` é material do Gazebo Classic; convenção de nome `.urdf.xacro`;
-  `xmlns:gz` sem uso; `assets/a80_6gz.*` sem uso.
 - [ ] **C — Identificadores em inglês**, comentários em português (padronizar).
 
 ## Repositórios e reprodutibilidade
@@ -54,3 +47,8 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 - [x] `package.xml` dos pacotes: dependências reais e descrições (08/11/2026). A dependência de
   `exort_description` em `exort_simulation` continua não declarada porque é a dependência circular listada acima.
 - [x] Excitação por torque senoidal imposto e script de ensaio com gráfico (08/11/2026).
+- [x] Linters do `ament_lint` sem falhas em `exort_description` e `exort_simulation` (08/11/2026).
+- [x] Launch encadeado por eventos: serviço de criação do Gazebo → spawn → JSB → controlador → PlotJuggler (08/11/2026).
+- [x] `AppendEnvironmentVariable` para `IGN_GAZEBO_RESOURCE_PATH` (08/11/2026).
+- [x] URDF: colisão do estator em X, `rotor_altura`, nomes `.urdf.xacro`; removidos material do Gazebo Classic,
+  `xmlns:gz` e `assets/a80_6gz.*` (08/11/2026).
