@@ -12,3 +12,7 @@ repositories:
     type: git
     url: https://github.com/julioGSabka/exort_control.git
     version: main
+  exort_msgs:
+    type: git
+    url: https://github.com/julioGSabka/exort_msgs.git
+    version: main

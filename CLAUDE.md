@@ -1,7 +1,7 @@
 # Contexto do Projeto — Exort Workspace (IC FAPESP, UNESP Sorocaba)
 
 > Arquivo de contexto para retomar o trabalho sem reanalisar o código.
-> Última atualização: 2026-11-04. Atualize ao mudar arquitetura, tópicos ou objetivos.
+> Última atualização: 2026-11-08. Atualize ao mudar arquitetura, tópicos ou objetivos.
 > **Fonte de verdade do objetivo:** o projeto FAPESP (reconsideração, versão #2 de 04/11/2026),
 > resumido na §1–2. README do workspace foi removido (citava RTOS); READMEs dos pacotes atualizados em 04/11/2026.
 > Pendências da revisão: **TODO.md**.
@@ -98,11 +98,12 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
     ├── exort_description/       repo julioGSabka/exort_description
     │   ├── urdf/motorAK.xacro.urdf    world→estator(fixo)→rotor (motor_joint) + link
     │   ├── urdf/motorAK.gazebo.xacro  bloco <ros2_control> + plugin gz_ros2_control
-    │   ├── urdf/peso.xacro.urdf       macro human_arm_weight (barra 2 kg, 0,3 m) — é o MEMBRO ROBÓTICO
+    │   ├── urdf/robot_link.xacro.urdf macro robot_link (barra 2 kg, 0,3 m) — é o MEMBRO ROBÓTICO
     │   ├── assets/ak10_9v2_0.stl      malha do motor (a80_6gz.* não é usada)
     │   ├── launch/exort_description.launch.py  robot_state_publisher + rviz2 (arg `rviz`)
     │   └── rviz/view_model.rviz
-    ├── exort_control/           repo local (git init); GitHub julioGSabka/exort_control a criar
+    ├── exort_msgs/              repo julioGSabka/exort_msgs — msg/ImpedanceState.msg
+    ├── exort_control/           repo julioGSabka/exort_control
     │   ├── include/exort_control/mit_impedance_law.hpp         lei pura (sem ROS), testável
     │   ├── include/exort_control/mit_impedance_controller.hpp  plugin ros2_control
     │   ├── src/mit_impedance_controller.cpp
@@ -121,8 +122,8 @@ Não há mais nós Python (ak10_controller.py e mit_command_publisher.py foram r
 ## 5. Modelo físico (exort_description)
 - `motor_joint`: `continuous`, eixo X, limite de 48 Nm e 33,5 rad/s, damping 0,05, friction 0,27.
 - Massas (datasheet AK10-9, 0,96 kg): estator 0,768 kg (cilindro oco, raios 49/41 mm), rotor 0,192 kg.
-- Link: `arm_link` de 2 kg, caixa de 0,02×0,3×0,03 m, centro a 0,1 m do eixo. **Nesta fase é o membro
-  robótico, não o humano** (macro ainda se chama `human_arm_weight`; ver TODO.md).
+- Link: `robot_link` de 2 kg, caixa de 0,02×0,3×0,03 m, centro a 0,1 m do eixo. **Nesta fase é o membro
+  robótico, não o humano** (revisão de massa e dimensões na TODO.md).
   Inércia total em torno do eixo ≈ 0,0353 kg·m² (braço 0,0152 + m·d² 0,02 + rotor 0,00016).
 - Spawn em z = 0,1 com pitch −1,57 (rotação em Y): o eixo X da junta fica **vertical** e o link gira num
   plano horizontal, **sem torque gravitacional**. Evidência: com torque zero por ~30 s a junta ficou em
@@ -144,10 +145,10 @@ respondem adequadamente**.
   `ros2 param set /mit_impedance_controller kv 20.0` (aplicado no próximo update, sem alocação).
 - Proteções: sobrevelocidade (não empurra no sentido do movimento acima de max_velocity), saturação
   ±max_effort; estado não finito → torque 0; ativação/desativação → torque 0.
-- `~/state` (`control_msgs/JointControllerState`, 1 kHz, stamp em sim-time), mapeamento provisório:
-  set_point = p_ref, process_value = p, process_value_dot = v, error = p_ref − p, time_step = Ts,
-  command = τ, p = Kv, d = Bv, i = t_ff, i_clamp = τ MIT antes dos limites, antiwindup = saturou.
-- Testes (19, todos passando): lei pura, controlador com interfaces locais, carga via pluginlib com
+- `~/state` (`exort_msgs/ImpedanceState`, 1 kHz, `header.stamp` em sim-time): time_step, position_reference,
+  position, velocity, position_error, velocity_error, kv, bv, feedforward_torque, raw_torque,
+  commanded_torque, saturated, overspeed.
+- Testes (20, todos passando): lei pura, controlador com interfaces locais e mensagem publicada, carga via pluginlib com
   `mock_components/GenericSystem`.
 
 ### Sequência de launch (`sim_and_control.launch.py`)

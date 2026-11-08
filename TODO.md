@@ -4,6 +4,7 @@ Itens para analisar **um a um**. Marque `[x]` quando resolvido e anote a decisã
 Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidade · **C** = detalhe.
 
 ## Metodologia e modelo
+- [ ] **B — Massa e dimensões do `robot_link`:** revisar os valores (hoje 2 kg, 0,02×0,3×0,03 m, centro a 0,1 m do eixo).
 - [ ] **A — Medir τi (torque de interação) na simulação.** Verificar o que o estado `effort` do
   `gz_ros2_control` 0.7 retorna (provável: torque comandado). Opções: sensor force/torque do Gazebo em
   junta fixa rotor→link + bridge; junta "medidora"; cálculo pela dinâmica.
@@ -17,20 +18,13 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
   referência. Definir como excitar (condição inicial ≠ p_ref, torque externo pelo Gazebo, referência θd(t)).
 - [ ] **A — Modelo do atuador:** inércia do rotor refletida pela redução 9:1 (×81), atrito da caixa,
   dinâmica do laço de corrente; quantização do quadro MIT/CAN e atraso de comunicação.
-- [ ] **B — Link do URDF é o membro robótico** (não humano): renomear macro `human_arm_weight`/`peso`
-  e revisar massa/dimensões do link.
 - [ ] **B — Faixa de Kv e Bv:** definir protocolo/critério para "responde adequadamente" (1º objetivo atual).
   Referência com o modelo atual: J ≈ 0,035 kg·m²; Kv = 5 → ωn ≈ 12 rad/s, ζ ≈ 0,18 (Bv = 0,1).
 
 ## Código e estrutura
-- [ ] **B — Mensagem própria com header** (`exort_msgs/ImpedanceState`: θ, θ̇, τi, τd, erros, Kv, Bv, Ds,
-  saturação). Hoje o plugin publica `control_msgs/JointControllerState` (não tem campo de saturação).
 - [ ] **B — Perturbação externa pelo Gazebo** (ApplyJointForce/wrench), se for necessária, em vez de somar no comando.
 - [ ] **B — Dependência circular** `exort_description` → `$(find exort_simulation)` no `motorAK.gazebo.xacro`:
   passar o YAML dos controladores como argumento do xacro.
-- [ ] **B — `package.xml`:** remover deps não usadas (`nav_msgs`, `position_controllers`,
-  `velocity_controllers`, `joint_trajectory_controller`) e declarar as usadas (`xacro`, `controller_manager`,
-  `joint_state_broadcaster`...); preencher descrições TODO.
 - [ ] **B — Linters do `ament_lint` falhando** (flake8 nos launch files dos dois pacotes, pep257).
 - [ ] **B — Pacote `exort_experiments`:** execução automática da grade (Kv, Bv, Ds), reset do Gazebo,
   gravação por ensaio, pós-processamento (RMSE, Kef/Bef, εK/εB, C_est, Ds,lim). Instalar `pandas`.
@@ -44,10 +38,15 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 
 ## Repositórios e reprodutibilidade
 - [ ] **B — `.repos` com `version: main`:** fixar commit/tag por campanha de ensaios.
-- [ ] **C — Monorepo vs. multi-repo** (vcstool): avaliar se 4 repos compensam para uma IC.
+- [ ] **C — Monorepo vs. multi-repo** (vcstool): avaliar se 5 repos compensam para uma IC.
 
 ## Feito
 - [x] Controlador migrado para plugin C++ do ros2_control (`exort_control/MitImpedanceController`),
   Ts exato = período do controller_manager; nós Python antigos removidos (QoS/filas e timer em sim-time
   deixaram de existir).
 - [x] Argumentos `gui` e `rviz` nos launches (necessários para rodar sem janelas).
+- [x] Mensagem própria `exort_msgs/ImpedanceState` com header, publicada em `~/state` (08/11/2026).
+  Campos τi e Ds entram quando existirem medição de τi e bloco de atraso.
+- [x] Link renomeado para `robot_link` (macro e arquivo `robot_link.xacro.urdf`) (08/11/2026).
+- [x] `package.xml` dos pacotes: dependências reais e descrições (08/11/2026). A dependência de
+  `exort_description` em `exort_simulation` continua não declarada porque é a dependência circular listada acima.
