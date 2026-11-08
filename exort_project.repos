@@ -16,3 +16,7 @@ repositories:
     type: git
     url: https://github.com/julioGSabka/exort_msgs.git
     version: main
+  exort_experiments:
+    type: git
+    url: https://github.com/julioGSabka/exort_experiments.git
+    version: main

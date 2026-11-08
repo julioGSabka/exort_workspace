@@ -4,6 +4,10 @@ Itens para analisar **um a um**. Marque `[x]` quando resolvido e anote a decisã
 Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidade · **C** = detalhe.
 
 ## Metodologia e modelo
+- [ ] **A — Tratar a inércia e o atrito na medição de Kef/Bef** (eq. 8). Ensaio de 08/11/2026 (Kv = 5, Bv = 0,1,
+  A = 1, f = 1): ajuste direto recuperou J = 0,0354, b = 0,052, Fc = 0,267; Re(Z) = 3,23 (esperado 3,61) e
+  Im(Z)/ω = 0,357 (0,150 sem atrito). Hipótese para Re(Z): atrito distorce θ; testar sem atrito.
+- [ ] **B — Perda de cerca de 0,8% das amostras no rosbag** (172 de 21.776): checar `--qos-profile-overrides`/cache.
 - [ ] **B — Massa e dimensões do `robot_link`:** revisar os valores (hoje 2 kg, 0,02×0,3×0,03 m, centro a 0,1 m do eixo).
 - [ ] **A — Medir τi (torque de interação) na simulação.** Verificar o que o estado `effort` do
   `gz_ros2_control` 0.7 retorna (provável: torque comandado). Opções: sensor force/torque do Gazebo em
@@ -14,8 +18,6 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 - [ ] **A — Referência de movimento θd(t), θ̇d(t)** padronizada (degrau, senoide, chirp...).
 - [ ] **A — Gravidade/orientação:** o spawn com pitch −1,57 deixa o eixo da junta vertical (evidência:
   com torque zero a junta ficou parada em ~1e-12 rad por 30 s). Decidir se é o desejado.
-- [ ] **A — Excitação para observar a resposta:** sem gravidade e sem perturbação a junta fica parada na
-  referência. Definir como excitar (condição inicial ≠ p_ref, torque externo pelo Gazebo, referência θd(t)).
 - [ ] **A — Modelo do atuador:** inércia do rotor refletida pela redução 9:1 (×81), atrito da caixa,
   dinâmica do laço de corrente; quantização do quadro MIT/CAN e atraso de comunicação.
 - [ ] **B — Faixa de Kv e Bv:** definir protocolo/critério para "responde adequadamente" (1º objetivo atual).
@@ -26,8 +28,8 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 - [ ] **B — Dependência circular** `exort_description` → `$(find exort_simulation)` no `motorAK.gazebo.xacro`:
   passar o YAML dos controladores como argumento do xacro.
 - [ ] **B — Linters do `ament_lint` falhando** (flake8 nos launch files dos dois pacotes, pep257).
-- [ ] **B — Pacote `exort_experiments`:** execução automática da grade (Kv, Bv, Ds), reset do Gazebo,
-  gravação por ensaio, pós-processamento (RMSE, Kef/Bef, εK/εB, C_est, Ds,lim). Instalar `pandas`.
+- [ ] **B — `exort_experiments`:** falta varrer a grade (Kv, Bv, Ds) e calcular RMSE, εK/εB, C_est, Ds,lim.
+  O ensaio individual e o gráfico já existem.
 - [ ] **B — Launch encadeado por eventos** (spawn → JSB → controlador → ensaio) em vez de `TimerAction`
   com tempos fixos (hoje o spawner do controlador sobe aos 10 s, antes do robô, que sobe aos 15 s).
 - [ ] **C — `SetEnvironmentVariable` sobrescreve** `IGN_GAZEBO_RESOURCE_PATH` → usar `AppendEnvironmentVariable`.
@@ -38,7 +40,7 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 
 ## Repositórios e reprodutibilidade
 - [ ] **B — `.repos` com `version: main`:** fixar commit/tag por campanha de ensaios.
-- [ ] **C — Monorepo vs. multi-repo** (vcstool): avaliar se 5 repos compensam para uma IC.
+- [ ] **C — Monorepo vs. multi-repo** (vcstool): avaliar se 6 repos compensam para uma IC.
 
 ## Feito
 - [x] Controlador migrado para plugin C++ do ros2_control (`exort_control/MitImpedanceController`),
@@ -50,3 +52,4 @@ Prioridade: **A** = afeta a metodologia/resultados · **B** = estrutura/qualidad
 - [x] Link renomeado para `robot_link` (macro e arquivo `robot_link.xacro.urdf`) (08/11/2026).
 - [x] `package.xml` dos pacotes: dependências reais e descrições (08/11/2026). A dependência de
   `exort_description` em `exort_simulation` continua não declarada porque é a dependência circular listada acima.
+- [x] Excitação por torque senoidal imposto e script de ensaio com gráfico (08/11/2026).

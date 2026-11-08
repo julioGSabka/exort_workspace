@@ -93,6 +93,7 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
 ```
 ~/ic_fapesp/                     repo "exort_workspace" (github julioGSabka) — .repos + CLAUDE.md + TODO.md
 ├── exort_project.repos          vcs import src < exort_project.repos
+├── results/                     ensaios gravados (ignorado pelo git)
 ├── TODO.md                      pendências da revisão de 04/11/2026 (analisar uma a uma)
 └── src/                         (ignorado pelo git do workspace; cada pacote é um repo próprio)
     ├── exort_description/       repo julioGSabka/exort_description
@@ -103,9 +104,11 @@ em sistemas amostrados; Lawrence (1993) sobre estabilidade × transparência; Es
     │   ├── launch/exort_description.launch.py  robot_state_publisher + rviz2 (arg `rviz`)
     │   └── rviz/view_model.rviz
     ├── exort_msgs/              repo julioGSabka/exort_msgs — msg/ImpedanceState.msg
+    ├── exort_experiments/       ensaio sem janelas, análise e gráficos (exort_experiments/, test/)
     ├── exort_control/           repo julioGSabka/exort_control
     │   ├── include/exort_control/mit_impedance_law.hpp         lei pura (sem ROS), testável
     │   ├── include/exort_control/mit_impedance_controller.hpp  plugin ros2_control
+    │   ├── include/exort_control/sine_excitation.hpp           gerador puro do torque externo
     │   ├── src/mit_impedance_controller.cpp
     │   ├── src/mit_impedance_controller_parameters.yaml        parâmetros (generate_parameter_library)
     │   ├── exort_control.xml                                   descrição pluginlib
@@ -139,6 +142,9 @@ Não há mais nós Python (ak10_controller.py e mit_command_publisher.py foram r
 respondem adequadamente**.
 - Roda no laço do `controller_manager` (Ts = 1 ms exato, confirmado: `time_step = 0.001`). Sem tópicos
   entre planta e lei de controle → Ds = 0 é atraso zero de verdade.
+- **Excitação (decidida em 08/11/2026):** torque senoidal imposto `τ_ext = rampa·A·sin(φ)`, somado depois da
+  saturação e invisível à lei de controle; parâmetros `excitation_{amplitude,frequency,start_delay,ramp_time}`.
+  Agente acoplado fica para depois; atrito segue em aberto.
 - Comando: `motor_joint/effort`; estados: `position`, `velocity` (procurados nessa ordem).
 - Parâmetros (`generate_parameter_library`, validados): `joint` (read-only), `kv` ≥ 0, `bv` ≥ 0,
   `max_effort` > 0 (48), `max_velocity` > 0 (33,5). Kv/Bv/limites mudam em execução:
@@ -147,8 +153,8 @@ respondem adequadamente**.
   ±max_effort; estado não finito → torque 0; ativação/desativação → torque 0.
 - `~/state` (`exort_msgs/ImpedanceState`, 1 kHz, `header.stamp` em sim-time): time_step, position_reference,
   position, velocity, position_error, velocity_error, kv, bv, feedforward_torque, raw_torque,
-  commanded_torque, saturated, overspeed.
-- Testes (20, todos passando): lei pura, controlador com interfaces locais e mensagem publicada, carga via pluginlib com
+  commanded_torque, external_torque, total_torque, saturated, overspeed.
+- Testes (29 em exort_control, 6 em exort_experiments): lei pura, controlador com interfaces locais e mensagem publicada, carga via pluginlib com
   `mock_components/GenericSystem`.
 
 ### Sequência de launch (`sim_and_control.launch.py`)
@@ -156,11 +162,10 @@ respondem adequadamente**.
 2. t ≈ 15 s (parede): spawn de `motor_AK10` → bridge (`/clock`, `/tf`) e spawner do JSB.
 3. t ≈ 10 s (parede): spawner do `mit_impedance_controller` (espera até 30 s pelo CM) com YAML temporário
    de `kv`/`bv` via `--param-file`; PlotJuggler opcional.
-Args: `kv`, `bv`, `gui`, `rviz`, `plotjuggler`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
+Args: `kv`, `bv`, `amplitude`, `frequency`, `start_delay`, `ramp_time`, `gui`, `rviz`, `plotjuggler`, `plotjuggler_layout`, `world_name`, `urdf_file`, `use_sim_time`.
 
 ## 7. Lacunas entre o código e a metodologia
-Lista completa e priorizada em **TODO.md**. Principais: excitação/perturbação para observar a resposta
-(hoje, sem gravidade e sem perturbação, a junta fica parada na referência); τi medido; bloco de atraso Ds;
+Lista completa e priorizada em **TODO.md**. Principais: critério de "responde adequadamente"; τi medido; bloco de atraso Ds;
 malha interna de torque; referência θd(t); registro por ensaio; automação da grade; pós-processamento.
 
 ## 8. Comandos úteis
@@ -169,6 +174,8 @@ cd ~/ic_fapesp && colcon build --symlink-install && source install/setup.bash
 colcon test --packages-select exort_control && colcon test-result --verbose
 ros2 launch exort_simulation sim_and_control.launch.py kv:=20.0 bv:=0.5
 ros2 launch exort_simulation sim_and_control.launch.py gui:=false rviz:=false plotjuggler:=false
+ros2 run exort_experiments run_excitation_test --kv 5 --bv 0.1 --amplitude 1 --frequency 1 --duration 20
+ros2 run exort_experiments plot_excitation_test results/<pasta_do_ensaio>
 ros2 control list_controllers
 ros2 topic echo /mit_impedance_controller/state
 ```
